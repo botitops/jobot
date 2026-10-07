@@ -5,6 +5,10 @@ Cero LLM y cero filtros de fit: lo unico que se descarta es lo que ya se vio
 (por URL o por titulo+empresa). El match contra el perfil lo hace el
 agente despues (modelo barato por titulo, modelo mejor por detalle).
 
+Ventana: cada corrida procesa SOLO el dia anterior ya cerrado (hora de Madrid). Cuando un portal
+se ve por primera vez se toman los ultimos INIT_DAYS dias. Los portales sin fecha en el listado
+(HTML) cuentan como "nuevos = no vistos antes". Cada dia sale en un unico lote new/<AAAA-MM-DD>.*
+
 Salida (data/):
   seen.json              estado de dedupe {clave: fecha_primera_vez}
   new/<run>.jsonl        lote de avisos nuevos de ESA corrida (run = AAAAMMDD-HHMM UTC), con descripcion si la fuente la da
@@ -20,7 +24,9 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+from zoneinfo import ZoneInfo
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import requests
@@ -30,13 +36,17 @@ DATA = os.path.join(ROOT, "data")
 NEWDIR = os.path.join(DATA, "new")
 SEEN_PATH = os.path.join(DATA, "seen.json")
 NOW = datetime.now(timezone.utc)
+MAD = ZoneInfo("Europe/Madrid")
+YESTERDAY = NOW.astimezone(MAD).date() - timedelta(days=1)   # ultimo dia cerrado en Madrid
 TODAY = NOW.strftime("%Y-%m-%d")
+INIT_DAYS = 7          # rango de la primera vez que se ve cada portal
+STATE_PATH = os.path.join(DATA, "state.json")
 FC_KEY = os.environ.get("FIRECRAWL_API_KEY", "")
 FC_DAILY_MAX = int(os.environ.get("FC_DAILY_MAX", "0"))  # ~900 creditos/mes
 FC_USED = 0
 MAXDESC = 3000
 KEEP_SEEN_DAYS = 90
-KEEP_NEW_DAYS = 14
+KEEP_NEW_DAYS = 30
 
 S = requests.Session()
 S.headers.update({
@@ -110,8 +120,31 @@ def k_tc(j):
     return "t:" + hashlib.sha1(f'{j["title"].lower()}|{j["company"].lower()}'.encode()).hexdigest()[:16]
 
 
+def parse_day(v):
+    """posted_at (epoch, ISO o RFC822) -> fecha en hora de Madrid, o None si no hay fecha confiable."""
+    v = str(v or "").strip()
+    if not v:
+        return None
+    try:
+        if v.isdigit():
+            n = int(v)
+            dt = datetime.fromtimestamp(n / 1000 if n > 10**11 else n, timezone.utc)
+        elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
+            return date.fromisoformat(v)
+        else:
+            try:
+                dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+            except ValueError:
+                dt = parsedate_to_datetime(v)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(MAD).date()
+    except Exception:
+        return None
+
+
 # ------------------------------------------------------------------ fuentes API
-def remoteok(is_seen):
+def remoteok(is_seen, start=None):
     d = jget("https://remoteok.com/api")
     return [J("remoteok", j.get("position"), j.get("url") or j.get("apply_url"), j.get("company"),
               j.get("location") or "Worldwide", j.get("date"), j.get("description"),
@@ -119,14 +152,14 @@ def remoteok(is_seen):
             for j in d if isinstance(j, dict) and j.get("position")]
 
 
-def workingnomads(is_seen):
+def workingnomads(is_seen, start=None):
     d = jget("https://www.workingnomads.com/api/exposed_jobs/")
     d = d if isinstance(d, list) else d.get("jobs", [])
     return [J("workingnomads", j.get("title"), j.get("url"), j.get("company_name"), j.get("location"),
               j.get("pub_date"), j.get("description")) for j in d]
 
 
-def himalayas(is_seen):
+def himalayas(is_seen, start=None):
     out = []
     for off in range(0, 3000, 100):
         jobs = (jget(f"https://himalayas.app/jobs/api?limit=100&offset={off}") or {}).get("jobs") or []
@@ -139,24 +172,25 @@ def himalayas(is_seen):
                 for j in jobs]
         page = [x for x in page if x]
         out += page
-        if page and all(is_seen(x) for x in page):  # pagina entera ya vista: cortar
+        days = [parse_day(x["posted_at"]) for x in page]
+        if page and start and all(d and d < start for d in days):  # pagina entera mas vieja que la ventana
             break
     return out
 
 
-def remotive(is_seen):
+def remotive(is_seen, start=None):
     d = jget("https://remotive.com/api/remote-jobs")
     return [J("remotive", j.get("title"), j.get("url"), j.get("company_name"), j.get("candidate_required_location"),
               j.get("publication_date"), j.get("description"), j.get("salary")) for j in d.get("jobs", [])]
 
 
-def jobicy(is_seen):
+def jobicy(is_seen, start=None):
     d = jget("https://jobicy.com/api/v2/remote-jobs?count=100")
     return [J("jobicy", j.get("jobTitle"), j.get("url"), j.get("companyName"), j.get("jobGeo"),
               j.get("pubDate"), j.get("jobExcerpt")) for j in d.get("jobs", [])]
 
 
-def arbeitnow(is_seen):  # solo remotos (campo estructurado de la API)
+def arbeitnow(is_seen, start=None):  # solo remotos (campo estructurado de la API)
     out = []
     for page in range(1, 6):
         d = jget(f"https://www.arbeitnow.com/api/job-board-api?page={page}").get("data") or []
@@ -184,11 +218,11 @@ WWR_FEEDS = ["remote-jobs", "categories/remote-customer-support-jobs", "categori
              "categories/remote-all-other-jobs"]
 
 
-def jobspresso(is_seen):  # WP Job Manager expone RSS de avisos
+def jobspresso(is_seen, start=None):  # WP Job Manager expone RSS de avisos
     return rss("jobspresso", "https://jobspresso.co/?feed=job_feed")
 
 
-def weworkremotely(is_seen):
+def weworkremotely(is_seen, start=None):
     out, errs = [], []
     for f in WWR_FEEDS:
         try:
@@ -260,7 +294,7 @@ def pick_jobs(pairs, page_url, link_re):
 
 
 def html_source(name, pages, link_re=None):
-    def fn(is_seen):
+    def fn(is_seen, start=None):
         found, errs, dbg = {}, [], []
         for page in pages:
             got, status, pairs = page_links(page, link_re)
@@ -316,75 +350,99 @@ SOURCES = {
 
 
 # ------------------------------------------------------------------------ main
-def load_seen():
+def load_json(path, default):
     try:
-        return json.load(open(SEEN_PATH))
+        return json.load(open(path))
     except (OSError, ValueError):
-        return {}
+        return default
 
 
 def main():
     os.makedirs(NEWDIR, exist_ok=True)
-    seen = load_seen()
-    batch, new, report = set(), [], {}
+    seen = load_json(SEEN_PATH, {})
+    state = load_json(STATE_PATH, {"last_day": None, "sources": {}})
+    last_day = date.fromisoformat(state["last_day"]) if state.get("last_day") else None
+    batch, new, report, init_now = set(), [], {}, []
     is_seen = lambda j: k_url(j) in seen  # noqa: E731
+    tot_fetched = tot_window = tot_dup = 0
 
     for name, fn in SOURCES.items():
+        first = name not in state["sources"]
+        start = YESTERDAY - timedelta(days=INIT_DAYS - 1) if first else (last_day + timedelta(days=1) if last_day else YESTERDAY)
+        if start > YESTERDAY:  # dia ya procesado: no se vuelve a tocar el portal
+            report[name] = (0, 0, 0, "ya procesado")
+            continue
         try:
-            items = [j for j in fn(is_seen) if j]
+            items = [j for j in fn(is_seen, start) if j]
             err = ""
         except Exception as e:  # una fuente rota no frena a las demas
             items, err = [], repr(e)[:200]
-        n_new = 0
+        in_win = dup = n_new = 0
         for j in items:
+            d = parse_day(j["posted_at"])
+            if d is not None and not (start <= d <= YESTERDAY):
+                continue                      # fuera de ventana (viejo, o de hoy: sale manana)
+            in_win += 1
             keys = [k for k in (k_url(j), k_tc(j)) if k]
             if any(k in seen or k in batch for k in keys):
+                dup += 1
                 continue
             batch.update(keys)
             j["id"] = keys[0][2:]
             j["first_seen"] = TODAY
+            j["day"] = YESTERDAY.isoformat()
             new.append(j)
             n_new += 1
-        report[name] = (len(items), n_new, err)
-        print(f"{name}: crudos={len(items)} nuevos={n_new} {err}", flush=True)
+        if not err:
+            state["sources"][name] = state["sources"].get(name) or YESTERDAY.isoformat()
+            if first:
+                init_now.append(name)
+        report[name] = (len(items), in_win, n_new, err)
+        tot_fetched += len(items); tot_window += in_win; tot_dup += dup
+        print(f"{name}: traidos={len(items)} en_ventana={in_win} nuevos={n_new} {err}", flush=True)
 
-    # persistir estado (primera vez = hoy; podar viejos)
     cutoff = (NOW - timedelta(days=KEEP_SEEN_DAYS)).strftime("%Y-%m-%d")
     for k in batch:
         seen[k] = TODAY
     seen = {k: v for k, v in seen.items() if v >= cutoff}
     json.dump(seen, open(SEEN_PATH, "w"), separators=(",", ":"))
 
-    run = NOW.strftime("%Y%m%d-%H%M")
-    if new:  # un lote por corrida: nunca se pisa ni se solapa con otro
-        with open(os.path.join(NEWDIR, f"{run}.jsonl"), "w") as f:
+    day = YESTERDAY.isoformat()
+    if new:  # un lote por dia cerrado (si se repite la corrida, se agregan solo los nuevos)
+        with open(os.path.join(NEWDIR, f"{day}.jsonl"), "a") as f:
             for j in new:
                 f.write(json.dumps(j, ensure_ascii=False) + "\n")
-        with open(os.path.join(NEWDIR, f"{run}.tsv"), "w") as f:
+        with open(os.path.join(NEWDIR, f"{day}.tsv"), "a") as f:
             for j in new:
                 row = [j["id"], j["title"], j["company"], j["location"], j["source"], j["posted_at"]]
                 f.write("\t".join(re.sub(r"[\t\r\n]+", " ", c) for c in row) + "\n")
-    cutoff_new = (NOW - timedelta(days=KEEP_NEW_DAYS)).strftime("%Y%m%d")
-    for fn_ in os.listdir(NEWDIR):  # podar lotes viejos
-        if fn_[:8].isdigit() and fn_[:8] < cutoff_new:
+    cutoff_new = (NOW - timedelta(days=KEEP_NEW_DAYS)).strftime("%Y-%m-%d")
+    for fn_ in os.listdir(NEWDIR):
+        if fn_[:10] < cutoff_new and fn_[:2] == "20":
             os.remove(os.path.join(NEWDIR, fn_))
 
-    total_raw = sum(v[0] for v in report.values())
+    if tot_fetched:
+        state["last_day"] = day
+    json.dump(state, open(STATE_PATH, "w"), indent=1)
+
     with open(os.path.join(DATA, "runs.jsonl"), "a") as f:
-        f.write(json.dumps({"run": run, "raw": total_raw, "new": len(new), "fc_credits": FC_USED,
+        f.write(json.dumps({"run": NOW.strftime("%Y%m%d-%H%M"), "day": day, "fetched": tot_fetched,
+                            "in_window": tot_window, "already_seen": tot_dup, "new": len(new),
+                            "init_sources": init_now, "fc_credits": FC_USED,
                             "sources": {k: list(v) for k, v in report.items()}}, ensure_ascii=False) + "\n")
-    lines = [f"# Pull {run} UTC", "", f"Crudos: {total_raw} | Nuevos: {len(new)} | Creditos Firecrawl: {FC_USED}", "",
-             "| fuente | crudos | nuevos | error |", "|---|---|---|---|"]
-    for name, (raw, n, err) in report.items():
-        flag = " ⚠️" if raw == 0 else ""
-        lines.append(f"| {name}{flag} | {raw} | {n} | {err} |")
+    lines = [f"# Pull del dia {day} (corrida {NOW.strftime('%Y-%m-%d %H:%M')} UTC)", "",
+             f"Traidos: {tot_fetched} | En ventana: {tot_window} | Ya vistos: {tot_dup} | Nuevos: {len(new)}"
+             + (f" | Primera vez (rango {INIT_DAYS}d): {', '.join(init_now)}" if init_now else ""), "",
+             "| fuente | traidos | en ventana | nuevos | error |", "|---|---|---|---|---|"]
+    for name, (raw, win, n, err) in report.items():
+        flag = " ⚠️" if (raw == 0 and err and err != "ya procesado") else ""
+        lines.append(f"| {name}{flag} | {raw} | {win} | {n} | {err} |")
     open(os.path.join(DATA, "report.md"), "w").write("\n".join(lines) + "\n")
-    for name, (raw, _, err) in report.items():
-        if raw == 0:
+    for name, (raw, _, _, err) in report.items():
+        if raw == 0 and err and err != "ya procesado":
             print(f"::warning::{name} devolvio 0 avisos {err}")
-    return 0 if total_raw else 1
+    return 0 if (tot_fetched or all(v[3] == "ya procesado" for v in report.values())) else 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-# run con Firecrawl 2026-10-07

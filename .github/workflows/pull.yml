@@ -2,7 +2,7 @@ name: pull
 
 on:
   schedule:
-    - cron: "0 20 * * *"   # 22:00 Madrid (verano) / 21:00 (invierno): margen antes de la tarea de las 00:00
+    - cron: "30 23 * * *"   # 01:30 Madrid (verano) / 00:30 (invierno): el dia anterior ya esta cerrado
   workflow_dispatch:
   push:
     branches: [main]
