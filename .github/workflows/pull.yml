@@ -29,6 +29,7 @@ jobs:
         run: python pull.py
         env:
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          FC_DAILY_MAX: "0"   # Firecrawl desactivado: quedan pocos creditos
       - name: Resumen
         if: always()
         run: cat data/report.md >> "$GITHUB_STEP_SUMMARY" || true
