@@ -184,9 +184,14 @@ WWR_FEEDS = ["remote-jobs", "categories/remote-customer-support-jobs", "categori
 
 
 def weworkremotely(is_seen):
-    out = []
+    out, errs = [], []
     for f in WWR_FEEDS:
-        out += rss("weworkremotely", f"https://weworkremotely.com/{f}.rss", split_company=True)
+        try:
+            out += rss("weworkremotely", f"https://weworkremotely.com/{f}.rss", split_company=True)
+        except Exception as e:
+            errs.append(repr(e)[:80])
+    if not out:
+        raise RuntimeError("; ".join(errs))
     return out
 
 
@@ -226,7 +231,7 @@ def page_links(url, link_re):
     got = pick(pairs)
     if len(got) < 3:  # sospechoso (JS o bloqueo): reintentar con Firecrawl
         got = pick(fc_links(url)) or got
-    return got, (r.status_code if r is not None else None)
+    return got, (r.status_code if r is not None else None), pairs
 
 
 def pick_jobs(pairs, page_url, link_re):
@@ -248,17 +253,21 @@ def pick_jobs(pairs, page_url, link_re):
 
 def html_source(name, pages, link_re=None):
     def fn(is_seen):
-        found, errs = {}, []
+        found, errs, dbg = {}, [], []
         for page in pages:
-            got, status = page_links(page, link_re)
+            got, status, pairs = page_links(page, link_re)
             if not got:
                 errs.append(f"{status or 'sin respuesta'} {page}")
+                dbg.append(f"## {page} status={status} anchors={len(pairs)}")
+                dbg += [f"{u}\t{t[:80]}" for u, t in pairs[:80]]
             for u, t in got:
                 slug = urlparse(u).path.rstrip("/").split("/")[-1].replace("-", " ")
                 title = t if len(t) >= 5 and not GENERIC.match(t) else slug
                 if u not in found or len(title) > len(found[u]):
                     found[u] = title
         if not found:
+            os.makedirs(os.path.join(DATA, "debug"), exist_ok=True)
+            open(os.path.join(DATA, "debug", f"{name}.txt"), "w").write("\n".join(dbg))
             raise RuntimeError("0 avisos; " + " | ".join(errs[:3]))
         return [J(name, t, u) for u, t in found.items()]
     return fn
