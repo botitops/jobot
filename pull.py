@@ -2,13 +2,14 @@
 """Jobot pull: baja TODOS los avisos de los portales, los normaliza y deduplica.
 
 Cero LLM y cero filtros de fit: lo unico que se descarta es lo que ya se vio
-(por URL o por titulo+empresa). El match contra el perfil de Mili lo hace el
+(por URL o por titulo+empresa). El match contra el perfil lo hace el
 agente despues (modelo barato por titulo, modelo mejor por detalle).
 
 Salida (data/):
   seen.json              estado de dedupe {clave: fecha_primera_vez}
-  new/YYYY-MM-DD.jsonl   avisos nuevos de esta corrida, con descripcion si la fuente la da
-  new/YYYY-MM-DD.tsv     una linea por aviso: id, titulo, empresa, ubicacion, fuente, fecha
+  new/<run>.jsonl        lote de avisos nuevos de ESA corrida (run = AAAAMMDD-HHMM UTC), con descripcion si la fuente la da
+  new/<run>.tsv          una linea por aviso: id, titulo, empresa, ubicacion, fuente, fecha
+  runs.jsonl             una linea por corrida: run, crudos, nuevos, detalle por fuente (para el embudo)
   report.md              por fuente: crudos / nuevos / error (una fuente en 0 = algo se rompio)
 """
 import hashlib
@@ -354,19 +355,25 @@ def main():
     seen = {k: v for k, v in seen.items() if v >= cutoff}
     json.dump(seen, open(SEEN_PATH, "w"), separators=(",", ":"))
 
-    with open(os.path.join(NEWDIR, f"{TODAY}.jsonl"), "a") as f:
-        for j in new:
-            f.write(json.dumps(j, ensure_ascii=False) + "\n")
-    with open(os.path.join(NEWDIR, f"{TODAY}.tsv"), "a") as f:
-        for j in new:
-            row = [j["id"], j["title"], j["company"], j["location"], j["source"], j["posted_at"]]
-            f.write("\t".join(re.sub(r"[\t\r\n]+", " ", c) for c in row) + "\n")
-    for fn_ in os.listdir(NEWDIR):  # podar archivos viejos
-        if fn_[:10] < (NOW - timedelta(days=KEEP_NEW_DAYS)).strftime("%Y-%m-%d"):
+    run = NOW.strftime("%Y%m%d-%H%M")
+    if new:  # un lote por corrida: nunca se pisa ni se solapa con otro
+        with open(os.path.join(NEWDIR, f"{run}.jsonl"), "w") as f:
+            for j in new:
+                f.write(json.dumps(j, ensure_ascii=False) + "\n")
+        with open(os.path.join(NEWDIR, f"{run}.tsv"), "w") as f:
+            for j in new:
+                row = [j["id"], j["title"], j["company"], j["location"], j["source"], j["posted_at"]]
+                f.write("\t".join(re.sub(r"[\t\r\n]+", " ", c) for c in row) + "\n")
+    cutoff_new = (NOW - timedelta(days=KEEP_NEW_DAYS)).strftime("%Y%m%d")
+    for fn_ in os.listdir(NEWDIR):  # podar lotes viejos
+        if fn_[:8].isdigit() and fn_[:8] < cutoff_new:
             os.remove(os.path.join(NEWDIR, fn_))
 
     total_raw = sum(v[0] for v in report.values())
-    lines = [f"# Pull {TODAY}", "", f"Crudos: {total_raw} | Nuevos: {len(new)} | Creditos Firecrawl: {FC_USED}", "",
+    with open(os.path.join(DATA, "runs.jsonl"), "a") as f:
+        f.write(json.dumps({"run": run, "raw": total_raw, "new": len(new), "fc_credits": FC_USED,
+                            "sources": {k: list(v) for k, v in report.items()}}, ensure_ascii=False) + "\n")
+    lines = [f"# Pull {run} UTC", "", f"Crudos: {total_raw} | Nuevos: {len(new)} | Creditos Firecrawl: {FC_USED}", "",
              "| fuente | crudos | nuevos | error |", "|---|---|---|---|"]
     for name, (raw, n, err) in report.items():
         flag = " ⚠️" if raw == 0 else ""

@@ -1,10 +1,10 @@
 # jobot
 
-Pull diario (sin LLM) de avisos de empleo remoto para Jobot.
+Pull diario (sin LLM) de avisos publicos de empleo remoto. Solo contiene avisos publicos y codigo.
 
 ```
 GitHub Actions 22:00 Madrid  ->  pull.py  ->  data/new/AAAA-MM-DD.{tsv,jsonl} + data/report.md
-Tarea programada de Claude 00:00 -> clona el repo -> etapa 1 (titulos, barato) -> etapa 2 (detalle, Sonnet) -> Drive
+Agente programado 00:00 -> clona el repo -> match por titulo (modelo barato) -> revision de detalle -> lista de revision manual
 ```
 
 ## Estado
