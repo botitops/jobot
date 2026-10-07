@@ -1,6 +1,6 @@
 # Pull 2026-10-07
 
-Crudos: 1316 | Nuevos: 253 | Creditos Firecrawl: 0
+Crudos: 1331 | Nuevos: 13 | Creditos Firecrawl: 0
 
 | fuente | crudos | nuevos | error |
 |---|---|---|---|
@@ -9,15 +9,15 @@ Crudos: 1316 | Nuevos: 253 | Creditos Firecrawl: 0
 | himalayas | 20 | 0 |  |
 | remotive | 17 | 0 |  |
 | jobicy | 100 | 0 |  |
-| arbeitnow | 67 | 0 |  |
-| weworkremotely | 258 | 209 |  |
-| remoterocketship | 441 | 44 |  |
-| jobgether | 184 | 0 |  |
+| arbeitnow | 72 | 0 |  |
+| weworkremotely | 258 | 0 |  |
+| remoterocketship | 441 | 0 |  |
+| jobgether | 184 | 3 |  |
 | dailyremote ⚠️ | 0 | 0 | RuntimeError('0 avisos; 403 https://dailyremote.com/remote-community-manager-jobs | 403 https://dailyremote.com/remote-account-manager-jobs | 403 https://dailyremote.com/remote-customer-success-jobs') |
 | nodesk ⚠️ | 0 | 0 | RuntimeError('0 avisos; 200 https://nodesk.co/remote-jobs/ | 200 https://nodesk.co/remote-jobs/europe/') |
 | euremotejobs ⚠️ | 0 | 0 | RuntimeError('0 avisos; 403 https://euremotejobs.com/') |
 | 4dayweek | 50 | 0 |  |
-| jobspresso ⚠️ | 0 | 0 | RuntimeError('0 avisos; 200 https://jobspresso.co/remote-work/') |
+| jobspresso | 10 | 10 |  |
 | remotifyeurope ⚠️ | 0 | 0 | RuntimeError('0 avisos; 403 https://remotifyeurope.com/') |
 | topcsjobs | 8 | 0 |  |
 | remotefirstjobs | 15 | 0 |  |
