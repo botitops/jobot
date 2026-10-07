@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "0 20 * * *"   # 22:00 Madrid (verano) / 21:00 (invierno): margen antes de la tarea de las 00:00
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [pull.py, .github/workflows/pull.yml]   # corre al ajustar parsers
 
 permissions:
   contents: write
