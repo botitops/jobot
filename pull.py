@@ -183,6 +183,10 @@ WWR_FEEDS = ["remote-jobs", "categories/remote-customer-support-jobs", "categori
              "categories/remote-all-other-jobs"]
 
 
+def jobspresso(is_seen):  # WP Job Manager expone RSS de avisos
+    return rss("jobspresso", "https://jobspresso.co/?feed=job_feed")
+
+
 def weworkremotely(is_seen):
     out, errs = [], []
     for f in WWR_FEEDS:
@@ -230,7 +234,10 @@ def page_links(url, link_re):
     pick = lambda ps: pick_jobs(ps, url, link_re)  # noqa: E731
     got = pick(pairs)
     if len(got) < 3:  # sospechoso (JS o bloqueo): reintentar con Firecrawl
-        got = pick(fc_links(url)) or got
+        fc = fc_links(url)
+        if fc:
+            pairs = fc
+        got = pick(fc) or got
     return got, (r.status_code if r is not None else None), pairs
 
 
@@ -297,7 +304,7 @@ SOURCES = {
     "nodesk": html_source("nodesk", ["https://nodesk.co/remote-jobs/", "https://nodesk.co/remote-jobs/europe/"]),
     "euremotejobs": html_source("euremotejobs", ["https://euremotejobs.com/"], r"/job/"),
     "4dayweek": html_source("4dayweek", ["https://4dayweek.io/remote-jobs"], r"/(remote-)?job/"),
-    "jobspresso": html_source("jobspresso", ["https://jobspresso.co/remote-work/"], r"/job/"),
+    "jobspresso": jobspresso,
     "remotifyeurope": html_source("remotifyeurope", ["https://remotifyeurope.com/"]),
     "topcsjobs": html_source("topcsjobs", ["https://topcsjobs.com/"]),
     "remotefirstjobs": html_source("remotefirstjobs", ["https://remotefirstjobs.com/"]),
@@ -347,10 +354,10 @@ def main():
     seen = {k: v for k, v in seen.items() if v >= cutoff}
     json.dump(seen, open(SEEN_PATH, "w"), separators=(",", ":"))
 
-    with open(os.path.join(NEWDIR, f"{TODAY}.jsonl"), "w") as f:
+    with open(os.path.join(NEWDIR, f"{TODAY}.jsonl"), "a") as f:
         for j in new:
             f.write(json.dumps(j, ensure_ascii=False) + "\n")
-    with open(os.path.join(NEWDIR, f"{TODAY}.tsv"), "w") as f:
+    with open(os.path.join(NEWDIR, f"{TODAY}.tsv"), "a") as f:
         for j in new:
             row = [j["id"], j["title"], j["company"], j["location"], j["source"], j["posted_at"]]
             f.write("\t".join(re.sub(r"[\t\r\n]+", " ", c) for c in row) + "\n")
