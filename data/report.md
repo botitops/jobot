@@ -1,25 +1,25 @@
-# Pull del dia 2026-10-13 (corrida 2026-10-13 23:50 UTC)
+# Pull del dia 2026-10-14 (corrida 2026-10-14 23:48 UTC)
 
-Traidos: 1964 | En ventana: 1402 | Ya vistos: 580 | Nuevos: 822
+Traidos: 2004 | En ventana: 1474 | Ya vistos: 574 | Nuevos: 900
 
 | fuente | traidos | en ventana | nuevos | error |
 |---|---|---|---|---|
 | remoteok | 99 | 0 | 0 |  |
-| workingnomads | 51 | 1 | 1 |  |
-| himalayas | 580 | 483 | 465 |  |
-| remotive | 16 | 0 | 0 |  |
-| jobicy | 100 | 100 | 99 |  |
-| arbeitnow | 130 | 100 | 82 |  |
-| weworkremotely | 299 | 39 | 20 |  |
-| remoterocketship | 426 | 426 | 146 |  |
-| jobgether | 181 | 181 | 0 |  |
+| workingnomads | 52 | 2 | 2 |  |
+| himalayas | 600 | 596 | 573 |  |
+| remotive | 15 | 0 | 0 |  |
+| jobicy | 100 | 98 | 93 |  |
+| arbeitnow | 144 | 65 | 59 |  |
+| weworkremotely | 301 | 30 | 14 |  |
+| remoterocketship | 432 | 432 | 137 |  |
+| jobgether | 180 | 180 | 4 |  |
 | dailyremote ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 403 https://dailyremote.com/remote-community-manager-jobs | 403 https://dailyremote.com/remote-account-manager-jobs | 403 https://dailyremote.com/remote-customer-success-jobs') |
 | nodesk ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 200 https://nodesk.co/remote-jobs/ | 200 https://nodesk.co/remote-jobs/europe/') |
-| euremotejobs ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 202 https://euremotejobs.com/') |
-| 4dayweek | 50 | 50 | 3 |  |
+| euremotejobs ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 403 https://euremotejobs.com/') |
+| 4dayweek | 50 | 50 | 13 |  |
 | jobspresso | 10 | 0 | 0 |  |
 | remotifyeurope ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 403 https://remotifyeurope.com/') |
-| topcsjobs | 8 | 8 | 6 |  |
+| topcsjobs | 7 | 7 | 5 |  |
 | remotefirstjobs | 14 | 14 | 0 |  |
 | trulyremotework ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 403 https://trulyremotework.com/') |
 | startupjobs ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 403 https://startup.jobs/?remote=true') |
