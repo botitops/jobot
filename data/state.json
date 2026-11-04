@@ -1,5 +1,5 @@
 {
- "last_day": "2026-11-02",
+ "last_day": "2026-11-03",
  "sources": {
   "remoteok": "2026-10-06",
   "workingnomads": "2026-10-06",
@@ -14,6 +14,7 @@
   "jobspresso": "2026-10-06",
   "topcsjobs": "2026-10-06",
   "remotefirstjobs": "2026-10-06",
-  "dailyremote": "2026-10-30"
+  "dailyremote": "2026-10-30",
+  "euremotejobs": "2026-11-03"
  }
 }
