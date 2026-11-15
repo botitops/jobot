@@ -1,25 +1,25 @@
-# Pull del dia 2026-11-13 (corrida 2026-11-14 03:26 UTC)
+# Pull del dia 2026-11-14 (corrida 2026-11-15 02:55 UTC)
 
-Traidos: 2253 | En ventana: 1568 | Ya vistos: 594 | Nuevos: 974
+Traidos: 2303 | En ventana: 1653 | Ya vistos: 715 | Nuevos: 938
 
 | fuente | traidos | en ventana | nuevos | error |
 |---|---|---|---|---|
-| remoteok | 97 | 1 | 1 |  |
-| workingnomads | 36 | 1 | 1 |  |
-| himalayas | 600 | 500 | 444 |  |
+| remoteok | 97 | 0 | 0 |  |
+| workingnomads | 34 | 0 | 0 |  |
+| himalayas | 600 | 580 | 534 |  |
 | remotive | 16 | 0 | 0 |  |
-| jobicy | 100 | 100 | 94 |  |
-| arbeitnow | 105 | 59 | 46 |  |
-| weworkremotely | 443 | 51 | 29 |  |
-| remoterocketship | 429 | 429 | 169 |  |
-| jobgether | 81 | 81 | 2 |  |
-| dailyremote | 237 | 237 | 152 |  |
+| jobicy | 100 | 100 | 92 |  |
+| arbeitnow | 98 | 24 | 18 |  |
+| weworkremotely | 442 | 33 | 22 |  |
+| remoterocketship | 432 | 432 | 72 |  |
+| jobgether | 79 | 79 | 0 |  |
+| dailyremote | 233 | 233 | 108 |  |
 | nodesk ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 200 https://nodesk.co/remote-jobs/ | 200 https://nodesk.co/remote-jobs/europe/') |
-| euremotejobs ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 202 https://euremotejobs.com/') |
-| 4dayweek | 50 | 50 | 17 |  |
+| euremotejobs | 60 | 60 | 55 |  |
+| 4dayweek | 50 | 50 | 21 |  |
 | jobspresso | 10 | 10 | 10 |  |
-| remotifyeurope | 28 | 28 | 6 |  |
-| topcsjobs | 5 | 5 | 3 |  |
+| remotifyeurope | 28 | 28 | 0 |  |
+| topcsjobs | 8 | 8 | 6 |  |
 | remotefirstjobs | 16 | 16 | 0 |  |
 | trulyremotework ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 200 https://trulyremotework.com/') |
 | startupjobs ⚠️ | 0 | 0 | 0 | RuntimeError('0 avisos; 403 https://startup.jobs/?remote=true') |
